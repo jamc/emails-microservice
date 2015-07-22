@@ -1,16 +1,15 @@
 swagger: "2.0"
 info:
   version: "0.0.1"
-  title: Hello World App
+  title: Fleetster Emails Microservice
 # during dev, should point to your local machine
 host: localhost:10010
 # basePath prefixes all resource paths 
-basePath: /
+basePath: /v1
 # 
 schemes:
   # tip: remove http to make production-grade
   - http
-  - https
 # format of bodies a client can send (Content-Type)
 consumes:
   - application/json
@@ -18,41 +17,281 @@ consumes:
 produces:
   - application/json
 paths:
-  /hello:
-    # binds a127 app logic to a route
-    x-swagger-router-controller: hello_world
+  "/emails/{id}":
+    x-swagger-router-controller: emailsController
     get:
-      description: Returns 'Hello' to the caller
-      # used as the method name of the controller
-      operationId: hello
+      description: Get an email by id
+      operationId: getEmailsByIdHandler
+      tags:
+        - Email CRUD
       parameters:
-        - name: name
+        - name: id
+          description: The email id
+          in: path
+          required: true
+          type: integer
+          minimum: 1
+        - name: fields
           in: query
-          description: The name of the person to whom to say hello
+          description: "Comma separated list of the fields to return, if not specified it returns all fields. E.g. contact.form,template.slug"
           required: false
           type: string
+          collectionFormat: csv
       responses:
         "200":
-          description: Success
+          description: A JSON with the email information
           schema:
-            # a pointer to a definition
-            $ref: "#/definitions/HelloWorldResponse"
-        # responses may fall through to errors
+            $ref: "#/definitions/EmailObject"
+        "401":
+          description: Unauthorized error
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
+        "404":
+          description: Email not found
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
         default:
-          description: Error
+          description: Error object
           schema:
-            $ref: "#/definitions/ErrorResponse"
-# complex objects have schema definitions
+            $ref: "#/definitions/DefaultResponseObject"
+    put:
+      description: Update an email resource
+      operationId: createEmailsHandler
+      tags:
+        - Email CRUD
+      parameters:
+        - name: id
+          description: The email id
+          in: path
+          required: true
+          type: integer
+          minimum: 1
+        - name: emailParameters
+          in: body
+          description: The email parameters in JSON format
+          required: true
+          schema:
+            $ref: "#/definitions/CreateUpdateEmailObject"
+      responses:
+        "200":
+          description: An updated confirmation
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
+        "401":
+          description: Unauthorized error
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
+        "404":
+          description: Email not found
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
+        "422":
+          description: Unprocessable entity, a sent field is invalid
+          schema:
+            $ref: "#/definitions/UnprocessableEntityErrorObject"
+        default:
+          description: Error object
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
+  "/emails":
+    x-swagger-router-controller: emailsController
+    post:
+      description: Create an email resource
+      operationId: createEmailsHandler
+      tags:
+        - Email CRUD
+      parameters:
+        - name: emailParameters
+          in: body
+          description: The email parameters in JSON format
+          required: true
+          schema:
+            $ref: "#/definitions/CreateUpdateEmailObject"
+      responses:
+        "201":
+          description: A created confirmation
+          schema:
+            required:
+              - status
+              - message
+              - slug
+            properties:
+              status:
+                type: string
+              message:
+                type: string
+              id:
+                type: integer
+                minimum: 1
+        "401":
+          description: Unauthorized error
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
+        "422":
+          description: Unprocessable entity, a sent field is invalid
+          schema:
+            $ref: "#/definitions/UnprocessableEntityErrorObject"
+        default:
+          description: Error object
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
+  "/emails/{id}/send":
+    x-swagger-router-controller: emailsController
+    put:
+      description: Send a previously created email
+      operationId: sendEmailsHandler
+      tags:
+        - Email CRUD
+      parameters:
+        - name: id
+          description: The email id
+          in: path
+          required: true
+          type: integer
+          minimum: 1
+      responses:
+        "200":
+          description: A sent confirmation message
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
+        "401":
+          description: Unauthorized error
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
+        "404":
+          description: Email not found
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
+        default:
+          description: Error object
+          schema:
+            $ref: "#/definitions/DefaultResponseObject"
 definitions:
-  HelloWorldResponse:
+  AttachmentsArray:
+    type: array
+    items:
+      required:
+        - type
+        - name
+        - content
+      properties:
+        type:
+          type: string
+        name:
+          type: string
+        content:
+          type: string
+  ContactObject:
     required:
+      - from
+      - to
+      - replyTo
+    properties:
+      from:
+        required:
+         - name
+         - email
+        properties:
+          name:
+            type: string
+          email:
+            type: string
+            format: email
+      to:
+        type: array
+        items:
+          required:
+            - name
+            - email
+            - type
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            type:
+              type: string
+      replyTo:
+        required:
+          - name
+          - email
+        properties:
+          name:
+            type: string
+          email:
+            type: string
+            format: email
+  CreateUpdateEmailObject:
+    required:
+      - contact
+      - template
+    properties:
+      contact:
+        $ref: "#/definitions/ContactObject"
+      template:
+        $ref: "#/definitions/TemplateObject"
+      attachments:
+        $ref: "#/definitions/AttachmentsArray"            
+  DefaultResponseObject:
+    required:
+      - status
       - message
     properties:
+      status:
+        type: string
       message:
         type: string
-  ErrorResponse:
+  EmailObject:
     required:
+      - id
+      - contact
+      - template
+      - createdAt
+      - updatedAt
+      - sentAt
+    properties:
+      id:
+        type: integer
+        minimum: 1
+      contact:
+        $ref: "#/definitions/ContactObject"
+      template:
+        $ref: "#/definitions/TemplateObject"
+      attachments:
+        $ref: "#/definitions/AttachmentsArray"
+      createdAt:
+        type: string
+        format: dateTime
+      updatedAt:
+        type: string
+        format: dateTime
+      sentAt:
+        type: string
+        format: dateTime
+  TemplateObject:
+    required:
+      - slug
+      - variables
+    properties:
+      slug:
+        type: string
+        pattern: "/^[a-z0-9-]+$/"
+      variables:
+        properties:
+          variable1:
+            type: string
+          variable2:
+            type: string
+  UnprocessableEntityErrorObject:
+    required:
+      - status
+      - path
       - message
     properties:
+      status:
+        type: string
+      path:
+        type: string
       message:
         type: string
