@@ -232,7 +232,7 @@ definitions:
       template:
         $ref: "#/definitions/TemplateObject"
       attachments:
-        $ref: "#/definitions/AttachmentsArray"            
+        $ref: "#/definitions/AttachmentsArray"
   DefaultResponseObject:
     required:
       - status
@@ -262,13 +262,13 @@ definitions:
         $ref: "#/definitions/AttachmentsArray"
       createdAt:
         type: string
-        format: dateTime
+        format: date-time
       updatedAt:
         type: string
-        format: dateTime
+        format: date-time
       sentAt:
         type: string
-        format: dateTime
+        format: date-time
   TemplateObject:
     required:
       - slug
@@ -276,7 +276,7 @@ definitions:
     properties:
       slug:
         type: string
-        pattern: "/^[a-z0-9-]+$/"
+        pattern: "^[a-z0-9-]+$"
       variables:
         properties:
           variable1:
